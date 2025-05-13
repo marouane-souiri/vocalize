@@ -11,7 +11,7 @@ import (
 
 var wsErrNotConnected = fmt.Errorf("websocket not connected")
 
-type wsManager interface {
+type WSManager interface {
 	Connect() error
 	Reconnect(url string) error
 	Close() error
@@ -35,7 +35,7 @@ type wsManagerImpl struct {
 	isActive bool
 }
 
-func newWSManager(url string) wsManager {
+func NewWSManager(url string) WSManager {
 	wm := &wsManagerImpl{
 		url:         url,
 		sendChan:    make(chan []byte, 100),
