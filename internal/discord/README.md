@@ -12,3 +12,15 @@ go test ./internal/discord -v -run "TestWSManager"
 # Run a specific test
 go test ./internal/discord -v -run "TestWSManager_Reconnect"
 ```
+
+### Test Discord client
+```bash
+# Run all Client tests with verbose output
+go test ./internal/discord -v -run "TestClient"
+```
+
+```bash
+# Run a specific test
+go test ./internal/discord -v -run "TestWSManager_Reconnect"
+```
+
