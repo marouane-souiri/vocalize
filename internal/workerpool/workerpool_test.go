@@ -85,7 +85,7 @@ func TestWorkerPool_AutoScaling(t *testing.T) {
 	taskCount := 100
 	wg.Add(taskCount)
 
-	for i := 0; i < taskCount; i++ {
+	for range taskCount {
 		wp.Submit(func() {
 			defer wg.Done()
 			time.Sleep(50 * time.Millisecond)
@@ -135,8 +135,8 @@ func TestWorkerPool_IdleTimeout(t *testing.T) {
 		t.Errorf("Expected worker count to decrease from %d, but got %d", midWorkers, finalWorkers)
 	}
 
-	if finalWorkers < int(wp.minWorkers) {
-		t.Errorf("Worker count %d fell below minimum %d", finalWorkers, wp.minWorkers)
+	if finalWorkers < int(wp.GetMinWorkersCount()) {
+		t.Errorf("Worker count %d fell below minimum %d", finalWorkers, wp.GetMinWorkersCount())
 	}
 
 	wp.Shutdown(context.Background())
