@@ -21,6 +21,10 @@ go test ./internal/discord -v -run "TestClient"
 
 ```bash
 # Run a specific test
-go test ./internal/discord -v -run "TestWSManager_Reconnect"
+go test ./internal/discord -v -run "TestClient_Reconnect"
 ```
 
+```bash
+# Run Client tests with verbose output and skip the massive load test
+go test ./internal/discord -v -run "TestClient" -short
+```
