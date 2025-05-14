@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
 
 const (
@@ -52,6 +54,7 @@ type clientHandler struct {
 type clientImpl struct {
 	token string
 	ws    WSManager
+	wp    workerpool.WorkerPool
 
 	sessionID        string
 	resumeGatewayURL string
@@ -69,14 +72,15 @@ type clientImpl struct {
 	reconnectMu  sync.Mutex
 }
 
-func NewClient(wsManager WSManager, token string) (Client, error) {
+func NewClient(wsm WSManager, wp workerpool.WorkerPool, token string) (Client, error) {
 	if token == "" {
 		return nil, fmt.Errorf("token cannot be empty")
 	}
 
 	return &clientImpl{
 		token:         token,
-		ws:            wsManager,
+		ws:            wsm,
+		wp:            wp,
 		eventHandlers: make(map[string][]*clientHandler),
 		shutdown:      make(chan struct{}),
 	}, nil
@@ -119,8 +123,15 @@ func (c *clientImpl) listenForEvents() {
 		case <-c.shutdown:
 			return
 		case message := <-c.ws.Receive():
-			// TODO: Run handleMessage using a workerpool
-			c.handleMessage(message)
+			// DONE: Run handleMessage using a workerpool
+			c.wp.Submit(func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Println("[Client] Recovered from a message handler")
+					}
+				}()
+				c.handleMessage(message)
+			})
 		case err := <-c.ws.Errors():
 			log.Printf("[WebSocket] Error: %v", err)
 			c.handleReconnect()
