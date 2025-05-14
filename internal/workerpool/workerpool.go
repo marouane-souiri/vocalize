@@ -9,7 +9,17 @@ import (
 
 type Task func()
 
-type WorkerPool struct {
+type WorkerPool interface {
+	Submit(task Task)
+	SubmitPriority(task Task)
+	Shutdown(ctx context.Context)
+	GetActiveWorkerCount() int
+	GetMinWorkersCount() int
+	GetQueueSize() int
+	GetQueueCapacity() int
+}
+
+type WorkerPoolImpl struct {
 	tasks         chan Task
 	wg            sync.WaitGroup
 	activeWorkers int32
@@ -19,14 +29,14 @@ type WorkerPool struct {
 	shutdownOnce  sync.Once
 }
 
-func NewWorkerPool(initialWorkers int, minWorkers int) *WorkerPool {
+func NewWorkerPool(initialWorkers int, minWorkers int) WorkerPool {
 	if initialWorkers <= 0 {
 		initialWorkers = 10
 	}
 	if minWorkers <= 0 {
 		minWorkers = 5
 	}
-	wp := &WorkerPool{
+	wp := &WorkerPoolImpl{
 		tasks:         make(chan Task, initialWorkers),
 		activeWorkers: 0,
 		minWorkers:    int32(minWorkers),
@@ -38,7 +48,7 @@ func NewWorkerPool(initialWorkers int, minWorkers int) *WorkerPool {
 	return wp
 }
 
-func (wp *WorkerPool) Submit(task Task) {
+func (wp *WorkerPoolImpl) Submit(task Task) {
 	queueLoad := float64(len(wp.tasks)) / float64(cap(wp.tasks))
 	if queueLoad >= 0.7 {
 		workersToAdd := max(cap(wp.tasks)/2, 1)
@@ -49,7 +59,7 @@ func (wp *WorkerPool) Submit(task Task) {
 	wp.tasks <- task
 }
 
-func (wp *WorkerPool) SubmitPriority(task Task) {
+func (wp *WorkerPoolImpl) SubmitPriority(task Task) {
 	wp.wg.Add(1)
 	atomic.AddInt32(&wp.activeWorkers, 1)
 	go func() {
@@ -59,7 +69,7 @@ func (wp *WorkerPool) SubmitPriority(task Task) {
 	}()
 }
 
-func (wp *WorkerPool) addWorker() {
+func (wp *WorkerPoolImpl) addWorker() {
 	wp.wg.Add(1)
 	atomic.AddInt32(&wp.activeWorkers, 1)
 
@@ -87,7 +97,7 @@ func (wp *WorkerPool) addWorker() {
 	}()
 }
 
-func (wp *WorkerPool) Shutdown(ctx context.Context) {
+func (wp *WorkerPoolImpl) Shutdown(ctx context.Context) {
 	close(wp.done)
 
 	wp.shutdownOnce.Do(func() {
@@ -106,14 +116,18 @@ func (wp *WorkerPool) Shutdown(ctx context.Context) {
 	}
 }
 
-func (wp *WorkerPool) GetActiveWorkerCount() int {
+func (wp *WorkerPoolImpl) GetActiveWorkerCount() int {
 	return int(atomic.LoadInt32(&wp.activeWorkers))
 }
 
-func (wp *WorkerPool) GetQueueSize() int {
+func (wp *WorkerPoolImpl) GetMinWorkersCount() int {
+	return int(atomic.LoadInt32(&wp.minWorkers))
+}
+
+func (wp *WorkerPoolImpl) GetQueueSize() int {
 	return len(wp.tasks)
 }
 
-func (wp *WorkerPool) GetQueueCapacity() int {
+func (wp *WorkerPoolImpl) GetQueueCapacity() int {
 	return cap(wp.tasks)
 }
