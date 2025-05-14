@@ -1,4 +1,4 @@
-package discord
+package websocket
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var wsErrNotConnected = fmt.Errorf("websocket not connected")
+var WsErrNotConnected = fmt.Errorf("websocket not connected")
 
 type WSManager interface {
 	Connect() error
@@ -138,7 +138,7 @@ func (m *wsManagerImpl) Send(data []byte) {
 
 	if !active {
 		select {
-		case m.errorChan <- wsErrNotConnected:
+		case m.errorChan <- WsErrNotConnected:
 		default:
 			log.Println("Warning: error channel full, dropping wsErrNotConnected")
 		}
@@ -182,7 +182,7 @@ func (m *wsManagerImpl) readPump() {
 		if conn == nil || !active {
 			if active {
 				select {
-				case m.errorChan <- wsErrNotConnected:
+				case m.errorChan <- WsErrNotConnected:
 				default:
 				}
 
@@ -241,7 +241,7 @@ func (m *wsManagerImpl) writePump() {
 
 			if conn == nil || !active {
 				select {
-				case m.errorChan <- wsErrNotConnected:
+				case m.errorChan <- WsErrNotConnected:
 				default:
 				}
 				continue

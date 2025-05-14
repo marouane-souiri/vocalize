@@ -1,4 +1,4 @@
-package discord
+package websocket
 
 import (
 	"encoding/json"
@@ -228,7 +228,7 @@ func TestWSManager_ConcurrentOperations(t *testing.T) {
 	var errors []error
 	var errorsMutex sync.Mutex
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -384,7 +384,7 @@ func TestWSManager_SendAfterClose(t *testing.T) {
 
 	select {
 	case err := <-wsm.Errors():
-		if err.Error() != wsErrNotConnected.Error() &&
+		if err.Error() != WsErrNotConnected.Error() &&
 			!strings.Contains(err.Error(), "closed") &&
 			!strings.Contains(err.Error(), "use of closed network connection") {
 			t.Fatalf("Expected connection closed error, got: %v", err)
