@@ -67,8 +67,6 @@ func (wp *WorkerPool) addWorker() {
 		defer wp.wg.Done()
 		defer atomic.AddInt32(&wp.activeWorkers, -1)
 
-		lastTaskTime := time.Now()
-
 		for {
 			select {
 			case task, ok := <-wp.tasks:
@@ -76,14 +74,10 @@ func (wp *WorkerPool) addWorker() {
 					return
 				}
 				task()
-				lastTaskTime = time.Now()
 
-			case <-time.After(5 * time.Second):
-				idleTime := time.Since(lastTaskTime)
-				if idleTime >= 30*time.Second {
-					if atomic.LoadInt32(&wp.activeWorkers) > wp.minWorkers {
-						return
-					}
+			case <-time.After(30 * time.Second):
+				if atomic.LoadInt32(&wp.activeWorkers) > wp.minWorkers {
+					return
 				}
 
 			case <-wp.done:
