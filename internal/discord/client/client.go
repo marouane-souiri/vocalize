@@ -1,4 +1,4 @@
-package discord
+package client
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/marouane-souiri/vocalize/internal/discord/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
 
@@ -53,7 +54,7 @@ type clientHandler struct {
 
 type clientImpl struct {
 	token string
-	ws    WSManager
+	ws    websocket.WSManager
 	wp    workerpool.WorkerPool
 
 	sessionID        string
@@ -72,7 +73,7 @@ type clientImpl struct {
 	reconnectMu  sync.Mutex
 }
 
-func NewClient(wsm WSManager, wp workerpool.WorkerPool, token string) (Client, error) {
+func NewClient(wsm websocket.WSManager, wp workerpool.WorkerPool, token string) (Client, error) {
 	if token == "" {
 		return nil, fmt.Errorf("token cannot be empty")
 	}

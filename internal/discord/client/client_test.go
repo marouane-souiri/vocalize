@@ -1,4 +1,4 @@
-package discord
+package client
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marouane-souiri/vocalize/internal/discord/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
 
@@ -164,7 +165,7 @@ func TestClient_Reconnect(t *testing.T) {
 	drainChannel(mockWs.sendCh)
 
 	mockWs.reconnectCount = 0
-	mockWs.injectError(wsErrNotConnected)
+	mockWs.injectError(websocket.WsErrNotConnected)
 
 	time.Sleep(2 * time.Second)
 
