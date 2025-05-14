@@ -3,12 +3,15 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/marouane-souiri/vocalize/internal/discord/cache"
+	"github.com/marouane-souiri/vocalize/internal/discord/models"
 	"github.com/marouane-souiri/vocalize/internal/discord/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
@@ -30,6 +33,8 @@ type Client interface {
 	Stop() error
 	On(eventType string, handler func(event json.RawMessage))
 	Once(eventType string, handler func(event json.RawMessage))
+
+	GetGuild(ID string) (*models.Guild, bool)
 }
 
 type Payload struct {
@@ -56,6 +61,7 @@ type clientImpl struct {
 	token string
 	ws    websocket.WSManager
 	wp    workerpool.WorkerPool
+	cm    cache.DiscordCacheManager
 
 	sessionID        string
 	resumeGatewayURL string
@@ -73,15 +79,24 @@ type clientImpl struct {
 	reconnectMu  sync.Mutex
 }
 
-func NewClient(wsm websocket.WSManager, wp workerpool.WorkerPool, token string) (Client, error) {
-	if token == "" {
+type CLientOptions struct {
+	Ws websocket.WSManager
+	Wp workerpool.WorkerPool
+	Cm cache.DiscordCacheManager
+
+	Token string
+}
+
+func NewClient(options *CLientOptions) (Client, error) {
+	if options.Token == "" {
 		return nil, fmt.Errorf("token cannot be empty")
 	}
 
 	return &clientImpl{
-		token:         token,
-		ws:            wsm,
-		wp:            wp,
+		token:         options.Token,
+		ws:            options.Ws,
+		wp:            options.Wp,
+		cm:            options.Cm,
 		eventHandlers: make(map[string][]*clientHandler),
 		shutdown:      make(chan struct{}),
 	}, nil
@@ -116,6 +131,15 @@ func (c *clientImpl) Once(eventType string, handler func(event json.RawMessage))
 		run:  handler,
 		kind: clientHandlerOnce,
 	})
+}
+
+func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
+	// TODO: get the guild from discord api if not found
+	guild, exist := c.cm.GetGuild(ID)
+	if !exist {
+		errors.New("Guild not cached")
+	}
+	return guild, nil
 }
 
 func (c *clientImpl) listenForEvents() {
