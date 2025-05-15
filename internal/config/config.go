@@ -1,22 +1,16 @@
 package config
 
-import "os"
+import "github.com/caarlos0/env/v11"
 
 type Config struct {
-	ClientToken string
+	Discord struct {
+		Token string `env:"TOKEN"`
+	} `envPrefix:"DISCORD_"`
 }
+
+var Conf Config
 
 // Load configuration
-func Load() *Config {
-	return &Config{
-		ClientToken: loadEnv("CLIENT_TOKEN", "CLIENT TOKEN GOES HERE"),
-	}
-}
-
-func loadEnv(key string, defaultVal string) string {
-	val, ok := os.LookupEnv(key)
-	if !ok {
-		return defaultVal
-	}
-	return val
+func Load() error {
+	return env.Parse(&Conf)
 }
