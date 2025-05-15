@@ -12,6 +12,7 @@ import (
 var WsErrNotConnected = fmt.Errorf("websocket not connected")
 
 type WSManager interface {
+	SetUrl(url string)
 	Connect() error
 	Reconnect(url string) error
 	Close() error
@@ -35,9 +36,8 @@ type wsManagerImpl struct {
 	isActive bool
 }
 
-func NewWSManager(url string) WSManager {
+func NewWSManager() WSManager {
 	wm := &wsManagerImpl{
-		url:         url,
 		sendChan:    make(chan []byte, 100),
 		receiveChan: make(chan []byte, 100),
 		errorChan:   make(chan error, 10),
@@ -91,6 +91,12 @@ func (m *wsManagerImpl) connectionManager() {
 			m.mu.Unlock()
 		}
 	}
+}
+
+func (m *wsManagerImpl) SetUrl(url string) {
+	m.mu.Lock()
+	m.url = url
+	m.mu.Unlock()
 }
 
 func (m *wsManagerImpl) Connect() error {

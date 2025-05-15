@@ -14,7 +14,8 @@ const (
 )
 
 func TestWSManager_Connection(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -54,7 +55,8 @@ func TestWSManager_Connection(t *testing.T) {
 }
 
 func TestWSManager_SendReceive(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -117,7 +119,8 @@ func TestWSManager_SendReceive(t *testing.T) {
 }
 
 func TestWSManager_Reconnect(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -210,7 +213,8 @@ func TestWSManager_Reconnect(t *testing.T) {
 }
 
 func TestWSManager_ConcurrentOperations(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -281,7 +285,8 @@ func TestWSManager_ConcurrentOperations(t *testing.T) {
 }
 
 func TestWSManager_ErrorHandling(t *testing.T) {
-	wsm := NewWSManager("wss://invalid.example.com")
+	wsm := NewWSManager()
+	wsm.SetUrl("wss://invalid.example.com")
 
 	err := wsm.Connect()
 	if err == nil {
@@ -289,7 +294,8 @@ func TestWSManager_ErrorHandling(t *testing.T) {
 		wsm.Close()
 	}
 
-	wsm = NewWSManager(discordGatewayURL)
+	wsm = NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -318,7 +324,8 @@ func TestWSManager_ErrorHandling(t *testing.T) {
 }
 
 func TestWSManager_CloseAndReopen(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
@@ -336,7 +343,8 @@ func TestWSManager_CloseAndReopen(t *testing.T) {
 		t.Fatalf("Failed to close connection: %v", err)
 	}
 
-	wsm = NewWSManager(discordGatewayURL)
+	wsm = NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect after closing: %v", err)
@@ -360,7 +368,8 @@ func TestWSManager_CloseAndReopen(t *testing.T) {
 }
 
 func TestWSManager_SendAfterClose(t *testing.T) {
-	wsm := NewWSManager(discordGatewayURL)
+	wsm := NewWSManager()
+	wsm.SetUrl(discordGatewayURL)
 
 	if err := wsm.Connect(); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
