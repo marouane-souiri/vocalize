@@ -10,17 +10,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marouane-souiri/vocalize/internal/discord/cache"
 	"github.com/marouane-souiri/vocalize/internal/discord/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
 
 const testToken = "test_token"
 
-func TestClient_BasicFunctionality(t *testing.T) {
+func getClientOption() (*CLientOptions, *mockWSManager) {
 	mockWs := newMockWSManager()
 	wp := workerpool.NewWorkerPool(10, 5)
+	cm, _ := cache.NewDiscordCacheManager()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	return &CLientOptions{
+		Ws:    mockWs,
+		Wp:    wp,
+		Cm:    cm,
+		Token: testToken,
+	}, mockWs
+}
+
+func TestClient_BasicFunctionality(t *testing.T) {
+	opt, mockWs := getClientOption()
+
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -57,10 +70,9 @@ func TestClient_BasicFunctionality(t *testing.T) {
 }
 
 func TestClient_EventHandling(t *testing.T) {
-	mockWs := newMockWSManager()
-	wp := workerpool.NewWorkerPool(10, 5)
+	opt, mockWs := getClientOption()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -106,10 +118,9 @@ func TestClient_EventHandling(t *testing.T) {
 }
 
 func TestClient_Heartbeat(t *testing.T) {
-	mockWs := newMockWSManager()
-	wp := workerpool.NewWorkerPool(10, 5)
+	opt, mockWs := getClientOption()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -146,10 +157,9 @@ func TestClient_Heartbeat(t *testing.T) {
 }
 
 func TestClient_Reconnect(t *testing.T) {
-	mockWs := newMockWSManager()
-	wp := workerpool.NewWorkerPool(10, 5)
+	opt, mockWs := getClientOption()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -204,10 +214,9 @@ func TestClient_Reconnect(t *testing.T) {
 }
 
 func TestClient_OnceHandler(t *testing.T) {
-	mockWs := newMockWSManager()
-	wp := workerpool.NewWorkerPool(10, 5)
+	opt, mockWs := getClientOption()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -244,10 +253,9 @@ func TestClient_MassivePingLoad(t *testing.T) {
 		t.Skip("Skipping high load test in short mode")
 	}
 
-	mockWs := newMockWSManager()
-	wp := workerpool.NewWorkerPool(20, 5)
+	opt, mockWs := getClientOption()
 
-	client, err := NewClient(mockWs, wp, testToken)
+	client, err := NewClient(opt)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
@@ -418,6 +426,63 @@ func TestClient_MassivePingLoad(t *testing.T) {
 	}
 }
 
+func TestClient_CachesGuildsOnReady(t *testing.T) {
+	opt, mockWs := getClientOption()
+
+	client, err := NewClient(opt)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.Start()
+	if err != nil {
+		t.Fatalf("Failed to start client: %v", err)
+	}
+
+	mockWs.injectReceiveMessage([]byte(`{"op":10,"d":{"heartbeat_interval":1000}}`))
+	mockWs.injectReceiveMessage([]byte(`{
+		"op": 0,
+		"t": "READY",
+		"s": 1,
+		"d": {
+			"guilds": [
+				{"id": "guild1", "name": "Guild One"},
+				{"id": "guild2", "name": "Guild Two"}
+			],
+			"session_id": "test_session",
+			"resume_gateway_url": "wss://test.gateway"
+		}
+	}`))
+
+	drainChannel(mockWs.sendCh)
+
+	time.Sleep(1 * time.Second)
+
+	cachedGuilds := client.GetGuilds()
+	if len(cachedGuilds) != 2 {
+		t.Fatalf("Expected 2 guilds to be cached, but found %d", len(cachedGuilds))
+	}
+	for _, g := range cachedGuilds {
+		t.Log(g.ID, g.Name)
+	}
+
+	expectedGuilds := map[string]string{
+		"guild1": "Guild One",
+		"guild2": "Guild Two",
+	}
+
+	for _, guild := range cachedGuilds {
+		if name, ok := expectedGuilds[guild.ID]; !ok || guild.Name != name {
+			t.Fatalf("Cached guild mismatch. Expected %v but found %v", expectedGuilds, guild)
+		}
+	}
+
+	err = client.Stop()
+	if err != nil {
+		t.Fatalf("Failed to stop client: %v", err)
+	}
+}
+
 func drainChannel(ch chan []byte) {
 	for {
 		select {
@@ -446,6 +511,9 @@ func newMockWSManager() *mockWSManager {
 
 func (m *mockWSManager) Connect() error {
 	return nil
+}
+
+func (m *mockWSManager) SetUrl(url string) {
 }
 
 func (m *mockWSManager) Reconnect(url string) error {

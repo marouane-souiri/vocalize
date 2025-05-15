@@ -34,7 +34,8 @@ type Client interface {
 	On(eventType string, handler func(event json.RawMessage))
 	Once(eventType string, handler func(event json.RawMessage))
 
-	GetGuild(ID string) (*models.Guild, bool)
+	GetGuild(ID string) (*models.Guild, error)
+	GetGuilds() []*models.Guild
 }
 
 type Payload struct {
@@ -59,6 +60,7 @@ type clientHandler struct {
 
 type clientImpl struct {
 	token string
+	url   string
 	ws    websocket.WSManager
 	wp    workerpool.WorkerPool
 	cm    cache.DiscordCacheManager
@@ -94,6 +96,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 
 	return &clientImpl{
 		token:         options.Token,
+		url:           gatewayURL,
 		ws:            options.Ws,
 		wp:            options.Wp,
 		cm:            options.Cm,
@@ -103,6 +106,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 }
 
 func (c *clientImpl) Start() error {
+	c.ws.SetUrl(c.url)
 	go c.listenForEvents()
 	return c.ws.Connect()
 }
@@ -134,12 +138,15 @@ func (c *clientImpl) Once(eventType string, handler func(event json.RawMessage))
 }
 
 func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
-	// TODO: get the guild from discord api if not found
 	guild, exist := c.cm.GetGuild(ID)
 	if !exist {
-		errors.New("Guild not cached")
+		return nil, errors.New("Guild not found")
 	}
 	return guild, nil
+}
+
+func (c *clientImpl) GetGuilds() []*models.Guild {
+	return c.cm.GetGuilds()
 }
 
 func (c *clientImpl) listenForEvents() {
@@ -216,7 +223,7 @@ func (c *clientImpl) handleReconnect() {
 	if c.resumeGatewayURL != "" {
 		reconnectURL = c.resumeGatewayURL
 	} else {
-		reconnectURL = gatewayURL
+		reconnectURL = c.url
 	}
 
 	if err := c.ws.Reconnect(reconnectURL); err != nil {
@@ -400,6 +407,7 @@ func (c *clientImpl) handleReady(data json.RawMessage) {
 			Username      string `json:"username"`
 			Discriminator string `json:"discriminator"`
 		} `json:"user"`
+		Guilds []models.UnavailableGuild `json:"guilds"`
 	}
 	if err := json.Unmarshal(data, &ready); err != nil {
 		log.Printf("[Discord] Error unmarshaling READY event: %v", err)
@@ -409,12 +417,26 @@ func (c *clientImpl) handleReady(data json.RawMessage) {
 	c.sessionID = ready.SessionID
 	c.resumeGatewayURL = ready.ResumeGatewayURL
 	if c.resumeGatewayURL == "" {
-		c.resumeGatewayURL = gatewayURL
+		log.Println("[Discord] No Resume Gateway URL provided, using default")
+		c.resumeGatewayURL = c.url
 	}
 
 	log.Printf("[Discord] Connected as %s#%s", ready.User.Username, ready.User.Discriminator)
 	log.Printf("[Discord] Session ID: %s", c.sessionID)
 	log.Printf("[Discord] Resume Gateway URL: %s", c.resumeGatewayURL)
+
+	if len(ready.Guilds) == 0 {
+		log.Println("[Discord] Info: No Guild to cache")
+	} else {
+		log.Printf("[Discord] Info: start Caching %d UnavailableGuild", len(ready.Guilds))
+		for _, guild := range ready.Guilds {
+			if ok := c.cm.SetGuild(&models.Guild{ID: guild.ID, Unavailable: true}); !ok {
+				log.Printf("[Discord] Info: guild with id %s, did not get cached", guild.ID)
+			}
+		}
+		c.cm.FlushGuilds()
+		log.Println("[Discord] Info: Caching UnavailableGuild ends")
+	}
 }
 
 func (c *clientImpl) handleInvalidSession(data json.RawMessage) {
