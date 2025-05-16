@@ -20,7 +20,7 @@ const testToken = "test_token"
 func getClientOption() (*CLientOptions, *mockWSManager) {
 	mockWs := newMockWSManager()
 	wp := workerpool.NewWorkerPool(10, 5)
-	cm, _ := cache.NewDiscordCacheManager()
+	cm := cache.NewDiscordCacheManager()
 
 	return &CLientOptions{
 		Ws:    mockWs,
