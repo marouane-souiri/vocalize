@@ -21,3 +21,9 @@ type GuildCreateEvent struct {
 type GuildDeleteEvent struct {
 	UnavailableGuild
 }
+
+type MessageCreateEvent struct {
+	GuildID *string `json:"guild_id"`
+	Member  *Member `json:"member"`
+	Message
+}
