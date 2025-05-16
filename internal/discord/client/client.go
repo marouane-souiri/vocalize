@@ -71,11 +71,12 @@ type Payload struct {
 }
 
 type clientImpl struct {
-	token string
-	url   string
-	ws    websocket.WSManager
-	wp    workerpool.WorkerPool
-	cm    cache.DiscordCacheManager
+	token   string
+	url     string
+	intents string
+	ws      websocket.WSManager
+	wp      workerpool.WorkerPool
+	cm      cache.DiscordCacheManager
 
 	sessionID        string
 	resumeGatewayURL string
@@ -93,12 +94,21 @@ type clientImpl struct {
 	reconnectMu  sync.Mutex
 }
 
+type Intents uint64
+
+const (
+	Intents_GUILDS          = 1 << 0
+	Intents_GUILD_MESSAGES  = 1 << 9
+	Intents_MESSAGE_CONTENT = 1 << 15
+)
+
 type CLientOptions struct {
 	Ws websocket.WSManager
 	Wp workerpool.WorkerPool
 	Cm cache.DiscordCacheManager
 
-	Token string
+	Intents uint64
+	Token   string
 }
 
 func NewClient(options *CLientOptions) (Client, error) {
@@ -109,6 +119,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 	return &clientImpl{
 		token:         options.Token,
 		url:           gatewayURL,
+		intents:       fmt.Sprintf("%d", options.Intents),
 		ws:            options.Ws,
 		wp:            options.Wp,
 		cm:            options.Cm,
@@ -121,8 +132,8 @@ func (c *clientImpl) SetGuild(guild *models.Guild) {
 	c.cm.SetGuild(guild)
 }
 
-func (c *clientImpl) DelGuild(guild *models.Guild) {
-	c.cm.DelGuild(guild)
+func (c *clientImpl) DelGuild(ID string) {
+	c.cm.DelGuild(ID)
 }
 
 func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {

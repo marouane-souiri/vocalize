@@ -184,7 +184,7 @@ func (c *clientImpl) sendIdentify() {
 				"browser": "discord-client",
 				"device": "discord-client"
 			},
-			"intents": 513
+			"intents": 33281
 		}`, c.token)),
 	}
 
