@@ -48,7 +48,7 @@ type Client interface {
 	Once(eventType string, handler HandlerFunc)
 
 	SetGuild(guild *models.Guild)
-	DelGuild(guild *models.Guild)
+	DelGuild(ID string)
 
 	// WARNING:
 	// Do not modify the returned *Guild.

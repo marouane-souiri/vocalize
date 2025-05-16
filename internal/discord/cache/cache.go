@@ -8,7 +8,7 @@ import (
 
 type DiscordCacheManager interface {
 	SetGuild(guild *models.Guild)
-	DelGuild(guild *models.Guild)
+	DelGuild(ID string)
 	// WARNING:
 	// Do not modify the returned *Guild.
 	// This object is shared between goroutines.
@@ -40,9 +40,9 @@ func (c *DiscordCacheManagerImpl) SetGuild(guild *models.Guild) {
 	c.guildsCacheMu.Unlock()
 }
 
-func (c *DiscordCacheManagerImpl) DelGuild(guild *models.Guild) {
+func (c *DiscordCacheManagerImpl) DelGuild(ID string) {
 	c.guildsCacheMu.Lock()
-	delete(c.guildsCache, guild.ID)
+	delete(c.guildsCache, ID)
 	c.guildsCacheMu.Unlock()
 }
 
