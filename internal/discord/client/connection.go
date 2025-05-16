@@ -29,7 +29,6 @@ func (c *clientImpl) listenForEvents() {
 		case <-c.shutdown:
 			return
 		case message := <-c.ws.Receive():
-			// DONE: Run handleMessage using a workerpool
 			c.wp.Submit(func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -121,27 +120,6 @@ func (c *clientImpl) handleReconnect() {
 	c.reconnectMu.Lock()
 	c.reconnecting = false
 	c.reconnectMu.Unlock()
-}
-
-func (c *clientImpl) handleHello(data json.RawMessage) {
-	var hello struct {
-		HeartbeatInterval int `json:"heartbeat_interval"`
-	}
-	if err := json.Unmarshal(data, &hello); err != nil {
-		log.Printf("[Discord] Error unmarshaling Hello payload: %v", err)
-		return
-	}
-
-	c.heartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
-	log.Printf("[Discord] Received Hello with heartbeat interval: %v", c.heartbeatInterval)
-
-	c.startHeartbeat()
-
-	if c.sessionID != "" && c.sequence > 0 {
-		c.sendResume()
-	} else {
-		c.sendIdentify()
-	}
 }
 
 func (c *clientImpl) startHeartbeat() {

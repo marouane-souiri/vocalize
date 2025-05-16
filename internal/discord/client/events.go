@@ -9,7 +9,7 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/discord/models"
 )
 
-func (c *clientImpl) On(eventType string, handler func(event json.RawMessage)) {
+func (c *clientImpl) On(eventType string, handler HandlerFunc) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.eventHandlers[eventType] = append(c.eventHandlers[eventType], &clientHandler{
@@ -18,13 +18,34 @@ func (c *clientImpl) On(eventType string, handler func(event json.RawMessage)) {
 	})
 }
 
-func (c *clientImpl) Once(eventType string, handler func(event json.RawMessage)) {
+func (c *clientImpl) Once(eventType string, handler HandlerFunc) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.eventHandlers[eventType] = append(c.eventHandlers[eventType], &clientHandler{
 		run:  handler,
 		kind: clientHandlerOnce,
 	})
+}
+
+func (c *clientImpl) handleHello(data json.RawMessage) {
+	var hello struct {
+		HeartbeatInterval int `json:"heartbeat_interval"`
+	}
+	if err := json.Unmarshal(data, &hello); err != nil {
+		log.Printf("[Discord] Error unmarshaling Hello payload: %v", err)
+		return
+	}
+
+	c.heartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
+	log.Printf("[Discord] Received Hello with heartbeat interval: %v", c.heartbeatInterval)
+
+	c.startHeartbeat()
+
+	if c.sessionID != "" && c.sequence > 0 {
+		c.sendResume()
+	} else {
+		c.sendIdentify()
+	}
 }
 
 func (c *clientImpl) handleDispatch(eventType string, data json.RawMessage) {
@@ -59,47 +80,6 @@ func (c *clientImpl) handleDispatch(eventType string, data json.RawMessage) {
 	}
 }
 
-func (c *clientImpl) handleReady(data json.RawMessage) {
-	var ready struct {
-		SessionID        string `json:"session_id"`
-		ResumeGatewayURL string `json:"resume_gateway_url"`
-		User             struct {
-			ID            string `json:"id"`
-			Username      string `json:"username"`
-			Discriminator string `json:"discriminator"`
-		} `json:"user"`
-		Guilds []models.UnavailableGuild `json:"guilds"`
-	}
-	if err := json.Unmarshal(data, &ready); err != nil {
-		log.Printf("[Discord] Error unmarshaling READY event: %v", err)
-		return
-	}
-
-	c.sessionID = ready.SessionID
-	c.resumeGatewayURL = ready.ResumeGatewayURL
-	if c.resumeGatewayURL == "" {
-		log.Println("[Discord] No Resume Gateway URL provided, using default")
-		c.resumeGatewayURL = c.url
-	}
-
-	log.Printf("[Discord] Connected as %s#%s", ready.User.Username, ready.User.Discriminator)
-	log.Printf("[Discord] Session ID: %s", c.sessionID)
-	log.Printf("[Discord] Resume Gateway URL: %s", c.resumeGatewayURL)
-
-	if len(ready.Guilds) == 0 {
-		log.Println("[Discord] Info: No Guild to cache")
-	} else {
-		log.Printf("[Discord] Info: start Caching %d UnavailableGuild", len(ready.Guilds))
-		for _, guild := range ready.Guilds {
-			if ok := c.cm.SetGuild(&models.Guild{ID: guild.ID, Unavailable: true}); !ok {
-				log.Printf("[Discord] Info: guild with id %s, did not get cached", guild.ID)
-			}
-		}
-		c.cm.FlushGuilds()
-		log.Println("[Discord] Info: Caching UnavailableGuild ends")
-	}
-}
-
 func (c *clientImpl) handleInvalidSession(data json.RawMessage) {
 	var canResume bool
 	if err := json.Unmarshal(data, &canResume); err != nil {
@@ -121,5 +101,34 @@ func (c *clientImpl) handleInvalidSession(data json.RawMessage) {
 		time.Sleep(waitTime)
 
 		c.sendIdentify()
+	}
+}
+
+func (c *clientImpl) handleReady(data json.RawMessage) {
+	var ready models.ReadyEvent
+	if err := json.Unmarshal(data, &ready); err != nil {
+		log.Printf("[Discord] Error unmarshaling READY event: %v", err)
+		return
+	}
+
+	c.sessionID = ready.SessionID
+	c.resumeGatewayURL = ready.ResumeGatewayURL
+	if c.resumeGatewayURL == "" {
+		log.Println("[Discord] No Resume Gateway URL provided, using default")
+		c.resumeGatewayURL = c.url
+	}
+
+	log.Printf("[Discord] Connected as %s#%s", ready.User.Username, ready.User.Discriminator)
+	log.Printf("[Discord] Session ID: %s", c.sessionID)
+	log.Printf("[Discord] Resume Gateway URL: %s", c.resumeGatewayURL)
+
+	if len(ready.Guilds) == 0 {
+		log.Println("[Discord] Info: No Guild to cache")
+	} else {
+		log.Printf("[Discord] Info: start Caching %d UnavailableGuild", len(ready.Guilds))
+		for _, guild := range ready.Guilds {
+			c.cm.SetGuild(&models.Guild{ID: guild.ID, Unavailable: true})
+		}
+		log.Println("[Discord] Info: Caching UnavailableGuild ends")
 	}
 }
