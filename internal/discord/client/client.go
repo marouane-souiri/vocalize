@@ -26,23 +26,6 @@ const (
 	opHeartbeatACK   = 11
 )
 
-type Client interface {
-	Start() error
-	Stop() error
-	On(eventType string, handler func(event json.RawMessage))
-	Once(eventType string, handler func(event json.RawMessage))
-
-	GetGuild(ID string) (*models.Guild, error)
-	GetGuilds() []*models.Guild
-}
-
-type Payload struct {
-	Op int             `json:"op"`
-	D  json.RawMessage `json:"d"`
-	S  int             `json:"s,omitempty"`
-	T  string          `json:"t,omitempty"`
-}
-
 type clientHandlerKind int
 
 const (
@@ -51,9 +34,40 @@ const (
 	clientHandlerConsumedOnce = 0
 )
 
+type HandlerFunc func(event json.RawMessage)
+
 type clientHandler struct {
 	run  func(event json.RawMessage)
 	kind clientHandlerKind
+}
+
+type Client interface {
+	Start() error
+	Stop() error
+	On(eventType string, handler HandlerFunc)
+	Once(eventType string, handler HandlerFunc)
+
+	SetGuild(guild *models.Guild)
+	DelGuild(guild *models.Guild)
+
+	// WARNING:
+	// Do not modify the returned *Guild.
+	// This object is shared between goroutines.
+	// Mutating it directly can lead to data races and undefined behavior.
+	// Always copy it before making changes - or we will be fucked.
+	GetGuild(ID string) (*models.Guild, error)
+	// WARNING: Do not modify the values of the returned map (*Guild).
+	// The Guild objects are shared between goroutines.
+	// Mutating it directly can lead to data races and undefined behavior.
+	// Always copy the data before making changes - or we will be fucked.
+	GetGuilds() map[string]*models.Guild
+}
+
+type Payload struct {
+	Op int             `json:"op"`
+	D  json.RawMessage `json:"d"`
+	S  int             `json:"s,omitempty"`
+	T  string          `json:"t,omitempty"`
 }
 
 type clientImpl struct {
@@ -103,14 +117,23 @@ func NewClient(options *CLientOptions) (Client, error) {
 	}, nil
 }
 
+func (c *clientImpl) SetGuild(guild *models.Guild) {
+	c.cm.SetGuild(guild)
+}
+
+func (c *clientImpl) DelGuild(guild *models.Guild) {
+	c.cm.DelGuild(guild)
+}
+
 func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
 	guild, exist := c.cm.GetGuild(ID)
 	if !exist {
+		// TODO: ask discord api for the guild object
 		return nil, errors.New("Guild not found")
 	}
 	return guild, nil
 }
 
-func (c *clientImpl) GetGuilds() []*models.Guild {
+func (c *clientImpl) GetGuilds() map[string]*models.Guild {
 	return c.cm.GetGuilds()
 }
