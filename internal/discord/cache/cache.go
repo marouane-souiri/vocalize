@@ -3,99 +3,69 @@ package cache
 import (
 	"sync"
 
-	"github.com/dgraph-io/ristretto/v2"
 	"github.com/marouane-souiri/vocalize/internal/discord/models"
 )
 
 type DiscordCacheManager interface {
-	Close()
-
-	// guild cache crud funcs
-	SetGuild(guild *models.Guild) bool
-	SetGuilds(guilds []*models.Guild) bool
-	FlushGuilds()
-	DelGuild(ID string)
+	SetGuild(guild *models.Guild)
+	DelGuild(guild *models.Guild)
+	// WARNING:
+	// Do not modify the returned *Guild.
+	// This object is shared between goroutines.
+	// Mutating it directly can lead to data races and undefined behavior.
+	// Always copy it before making changes - or we will be fucked.
 	GetGuild(ID string) (*models.Guild, bool)
-	GetGuilds() []*models.Guild
+	// WARNING: Do not modify the values of the returned map (*Guild).
+	// The Guild objects are shared between goroutines.
+	// Mutating it directly can lead to data races and undefined behavior.
+	// Always copy the data before making changes - or we will be fucked.
+	GetGuilds() map[string]*models.Guild
+	GuildsCount() int
 }
 
 type DiscordCacheManagerImpl struct {
-	guildsCache *ristretto.Cache[string, *models.Guild]
-	guildKeys   sync.Map
+	guildsCache   map[string]*models.Guild
+	guildsCacheMu sync.RWMutex
 }
 
-func NewDiscordCacheManager() (DiscordCacheManager, error) {
-	guildsCache, err := ristretto.NewCache(&ristretto.Config[string, *models.Guild]{
-		NumCounters: 1e7,
-		MaxCost:     1 << 28,
-		BufferItems: 64,
-		Metrics:     true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+func NewDiscordCacheManager() DiscordCacheManager {
 	return &DiscordCacheManagerImpl{
-		guildsCache: guildsCache,
-	}, nil
-}
-
-func (c *DiscordCacheManagerImpl) Close() {
-	c.guildsCache.Close()
-}
-
-func (c *DiscordCacheManagerImpl) SetGuild(guild *models.Guild) bool {
-	if c.guildsCache.Set(guild.ID, guild, 1) {
-		c.guildKeys.Store(guild.ID, struct{}{})
-		return true
+		guildsCache: make(map[string]*models.Guild, 20),
 	}
-	return false
 }
 
-func (c *DiscordCacheManagerImpl) SetGuilds(guilds []*models.Guild) bool {
-	batchSize := 60
-	batchCount := 0
-
-	for _, guild := range guilds {
-		if !c.SetGuild(guild) {
-			return false
-		}
-		batchCount++
-
-		if batchCount >= batchSize {
-			c.FlushGuilds()
-			batchCount = 0
-		}
-	}
-
-	if batchCount > 0 {
-		c.FlushGuilds()
-	}
-
-	return true
+func (c *DiscordCacheManagerImpl) SetGuild(guild *models.Guild) {
+	c.guildsCacheMu.Lock()
+	c.guildsCache[guild.ID] = guild
+	c.guildsCacheMu.Unlock()
 }
 
-func (c *DiscordCacheManagerImpl) FlushGuilds() {
-	c.guildsCache.Wait()
-}
-
-func (c *DiscordCacheManagerImpl) DelGuild(ID string) {
-	c.guildsCache.Del(ID)
-	c.guildKeys.Delete(ID)
+func (c *DiscordCacheManagerImpl) DelGuild(guild *models.Guild) {
+	c.guildsCacheMu.Lock()
+	delete(c.guildsCache, guild.ID)
+	c.guildsCacheMu.Unlock()
 }
 
 func (c *DiscordCacheManagerImpl) GetGuild(ID string) (*models.Guild, bool) {
-	return c.guildsCache.Get(ID)
+	c.guildsCacheMu.RLock()
+	guild, ok := c.guildsCache[ID]
+	c.guildsCacheMu.RUnlock()
+	return guild, ok
 }
 
-func (c *DiscordCacheManagerImpl) GetGuilds() []*models.Guild {
-	var guilds []*models.Guild
-	c.guildKeys.Range(func(key, _ any) bool {
-		id := key.(string)
-		if val, found := c.guildsCache.Get(id); found && val != nil {
-			guilds = append(guilds, val)
+func (c *DiscordCacheManagerImpl) GetGuilds() map[string]*models.Guild {
+	c.guildsCacheMu.RLock()
+	defer c.guildsCacheMu.RUnlock()
+
+	guilds := make(map[string]*models.Guild, len(c.guildsCache))
+	for id, guild := range c.guildsCache {
+		if !guild.Unavailable {
+			guilds[id] = guild
 		}
-		return true
-	})
+	}
 	return guilds
+}
+
+func (c *DiscordCacheManagerImpl) GuildsCount() int {
+	return len(c.guildsCache)
 }
