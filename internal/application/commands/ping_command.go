@@ -12,10 +12,10 @@ type PingCommand struct {
 }
 
 func NewPingCommand() commandsmanager.BaseCommand {
-	command := &PingCommand{}
-	command.Name = "ping"
-	command.Description = "A ping command"
-	return command
+	c := &PingCommand{}
+	c.Name = "ping"
+	c.Description = "A ping command"
+	return c
 }
 
 func (cmd *PingCommand) Run(c client.Client, ctx commandsmanager.CommandContext) error {

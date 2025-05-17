@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/marouane-souiri/vocalize/internal/application/commands/commands"
+	"github.com/marouane-souiri/vocalize/internal/application/commands"
 	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/application/handlers"
 	"github.com/marouane-souiri/vocalize/internal/config"
