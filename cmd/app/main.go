@@ -9,7 +9,7 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/config"
 	"github.com/marouane-souiri/vocalize/internal/discord/cache"
 	"github.com/marouane-souiri/vocalize/internal/discord/client"
-	"github.com/marouane-souiri/vocalize/internal/discord/websocket"
+	"github.com/marouane-souiri/vocalize/internal/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
 
