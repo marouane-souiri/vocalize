@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -39,9 +40,27 @@ func (c *clientImpl) listenForEvents() {
 			})
 		case err := <-c.ws.Errors():
 			log.Printf("[WebSocket] Error: %v", err)
-			c.handleReconnect()
+			if shouldReconnect(err) {
+				c.handleReconnect()
+			}
 		}
 	}
+}
+
+func shouldReconnect(err error) bool {
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return true
+	}
+
+	if strings.Contains(err.Error(), "connection reset by peer") {
+		return true
+	}
+
+	if strings.Contains(err.Error(), "EOF") {
+		return true
+	}
+
+	return false
 }
 
 func (c *clientImpl) handleMessage(message []byte) {
@@ -88,9 +107,11 @@ func (c *clientImpl) handleReconnect() {
 
 	if c.heartbeatCancel != nil {
 		c.heartbeatCancel()
+		c.heartbeatCancel = nil
 	}
 
-	time.Sleep(1 * time.Second)
+	maxRetries := 5
+	baseDelay := 1 * time.Second
 
 	var reconnectURL string
 	if c.resumeGatewayURL != "" {
@@ -99,24 +120,34 @@ func (c *clientImpl) handleReconnect() {
 		reconnectURL = c.url
 	}
 
-	if err := c.ws.Reconnect(reconnectURL); err != nil {
-		log.Printf("[Discord] Failed to reconnect: %v, will make fresh conn", err)
+	var success bool
 
-		time.Sleep(3 * time.Second)
+	for attempt := 0; attempt < maxRetries && !success; attempt++ {
+		delay := baseDelay * time.Duration(1<<attempt) // 1s, 2s, 4s, 8s, 16s
+		jitter := time.Duration(rand.Float64() * float64(delay) * 0.3)
+		reconnectDelay := delay + jitter
 
-		if err := c.ws.Connect(); err != nil {
-			// What to do next? reconnect did not work connect did not work too, fuck this just panic.
-			panic("Connect and Reconnect both did not work")
+		log.Printf("[Discord] Reconnection attempt %d/%d, waiting %v", attempt+1, maxRetries, reconnectDelay)
+		time.Sleep(reconnectDelay)
+
+		if err := c.ws.Reconnect(reconnectURL); err != nil {
+			log.Printf("[Discord] Failed to reconnect: %v, will retry", err)
+			continue
 		}
 
-		c.reconnectMu.Lock()
-		c.reconnecting = false
-		c.reconnectMu.Unlock()
-
-		return
+		log.Println("[Discord] Reconnected, waiting for Hello")
+		success = true
 	}
 
-	log.Println("[Discord] Reconnected, waiting for Hello")
+	if !success {
+		log.Printf("[Discord] Failed to reconnect after %d attempts, trying fresh connection", maxRetries)
+		time.Sleep(5 * time.Second)
+
+		if err := c.ws.Connect(); err != nil {
+			log.Printf("[Discord] Fresh connection also failed: %v", err)
+		}
+	}
+
 	c.reconnectMu.Lock()
 	c.reconnecting = false
 	c.reconnectMu.Unlock()
@@ -130,13 +161,21 @@ func (c *clientImpl) startHeartbeat() {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.heartbeatCancel = cancel
 
-	interval := time.Duration(float64(c.heartbeatInterval) * 0.9)
+	minInterval := time.Duration(float64(c.heartbeatInterval) * 0.9)
+	maxInterval := c.heartbeatInterval
+	interval := minInterval + time.Duration(rand.Float64()*float64(maxInterval-minInterval))
+
 	ticker := time.NewTicker(interval)
 	c.lastHeartbeatAck = time.Now()
 
 	go func() {
-		jitter := rand.Float64()
-		time.Sleep(time.Duration(float64(c.heartbeatInterval) * jitter))
+		initialJitter := time.Duration(rand.Float64() * float64(interval))
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case <-time.After(initialJitter):
+		}
 
 		c.sendHeartbeat()
 
@@ -148,8 +187,8 @@ func (c *clientImpl) startHeartbeat() {
 			case <-ticker.C:
 				if time.Since(c.lastHeartbeatAck) > c.heartbeatInterval*2 && !c.lastHeartbeatAck.IsZero() {
 					log.Println("[Discord] No heartbeat ACK received, reconnecting")
-					go c.handleReconnect()
 					ticker.Stop()
+					go c.handleReconnect()
 					return
 				}
 				c.sendHeartbeat()
