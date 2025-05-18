@@ -10,6 +10,7 @@ import (
 
 	"github.com/marouane-souiri/vocalize/internal/discord/cache"
 	"github.com/marouane-souiri/vocalize/internal/discord/models"
+	"github.com/marouane-souiri/vocalize/internal/discord/requester"
 	"github.com/marouane-souiri/vocalize/internal/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
@@ -61,6 +62,8 @@ type Client interface {
 	// Mutating it directly can lead to data races and undefined behavior.
 	// Always copy the data before making changes - or we will be fucked.
 	GetGuilds() map[string]*models.Guild
+
+	SendMessage(channelID string, message *models.SendMessage) error
 }
 
 type Payload struct {
@@ -77,6 +80,7 @@ type clientImpl struct {
 	ws      websocket.WSManager
 	wp      workerpool.WorkerPool
 	cm      cache.DiscordCacheManager
+	ar      requester.APIRequester
 
 	authenticated bool
 	authMu        sync.Mutex
@@ -103,9 +107,11 @@ const (
 )
 
 type CLientOptions struct {
-	Ws      websocket.WSManager
-	Wp      workerpool.WorkerPool
-	Cm      cache.DiscordCacheManager
+	Ws websocket.WSManager
+	Wp workerpool.WorkerPool
+	Cm cache.DiscordCacheManager
+	Ar requester.APIRequester
+
 	Intents uint64
 	Token   string
 }
@@ -121,6 +127,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 		ws:            options.Ws,
 		wp:            options.Wp,
 		cm:            options.Cm,
+		ar:            options.Ar,
 		eventHandlers: make(map[string][]*clientHandler),
 		shutdown:      make(chan struct{}),
 		authenticated: false,
@@ -146,4 +153,9 @@ func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
 
 func (c *clientImpl) GetGuilds() map[string]*models.Guild {
 	return c.cm.GetGuilds()
+}
+
+func (c *clientImpl) SendMessage(channelID string, message *models.SendMessage) error {
+	c.ar.SendMessage(channelID, message)
+	return nil
 }
