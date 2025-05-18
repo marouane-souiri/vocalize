@@ -9,6 +9,8 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/config"
 	"github.com/marouane-souiri/vocalize/internal/discord/cache"
 	"github.com/marouane-souiri/vocalize/internal/discord/client"
+	"github.com/marouane-souiri/vocalize/internal/discord/requester"
+	"github.com/marouane-souiri/vocalize/internal/ratelimiter"
 	"github.com/marouane-souiri/vocalize/internal/websocket"
 	"github.com/marouane-souiri/vocalize/internal/workerpool"
 )
@@ -26,12 +28,17 @@ func main() {
 
 	discordCacheManager := cache.NewDiscordCacheManager()
 
+	rateLimiter := ratelimiter.NewRateLimiter()
+
+	apiRequester := requester.NewAPIRequester(config.Conf.Discord.Token, rateLimiter)
+
 	client, err := client.NewClient(&client.CLientOptions{
 		Token:   config.Conf.Discord.Token,
 		Intents: client.Intents_GUILDS | client.Intents_GUILD_MESSAGES | client.Intents_MESSAGE_CONTENT,
 		Ws:      websocketManager,
 		Wp:      workerpoolManager,
 		Cm:      discordCacheManager,
+		Ar:      apiRequester,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create discord client: %v", err)
