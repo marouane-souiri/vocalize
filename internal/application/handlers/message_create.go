@@ -5,15 +5,14 @@ import (
 	"log"
 	"strings"
 
-	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
-	"github.com/marouane-souiri/vocalize/internal/discord/client"
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
+	"github.com/marouane-souiri/vocalize/internal/domain"
+	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
 // https://discord.com/developers/docs/events/gateway-events#message-create
-func MessageCreateHandler(c client.Client, commandsManager commandsmanager.CommandsManager) client.HandlerFunc {
+func MessageCreateHandler(c interfaces.Client, commandsManager interfaces.CommandsManager) domain.ClientHandler {
 	return func(event json.RawMessage) {
-		var messageCreate models.MessageCreateEvent
+		var messageCreate domain.MessageCreateEvent
 
 		if err := json.Unmarshal(event, &messageCreate); err != nil {
 			log.Printf("[Handlers] Error unmarshaling MESSAGE_CREATE event: %v", err)

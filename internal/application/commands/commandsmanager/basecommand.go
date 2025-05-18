@@ -1,14 +1,5 @@
 package commandsmanager
 
-import "github.com/marouane-souiri/vocalize/internal/discord/client"
-
-type BaseCommand interface {
-	GetName() string
-	GetAliases() []string
-	GetDescription() string
-	Run(client client.Client, ctx CommandContext) error
-}
-
 type BaseCommandImpl struct {
 	Name        string
 	Aliases     []string

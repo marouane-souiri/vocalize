@@ -3,34 +3,23 @@ package ratelimiter
 import (
 	"sync"
 	"time"
+
+	"github.com/marouane-souiri/vocalize/internal/domain"
 )
-
-type RateLimiter interface {
-	UpdateLimit(route string, limit *RateLimit)
-	IsRateLimited(route string) bool
-	RetryAfter(route string) time.Duration
-}
-
-type RateLimit struct {
-	Remaining  int
-	ResetAfter time.Duration
-	ResetAt    time.Time
-	Global     bool
-}
 
 type RateLimiterImpl struct {
 	mu          sync.RWMutex
-	globalLimit *RateLimit
-	routeLimits map[string]*RateLimit
+	globalLimit *domain.RateLimit
+	routeLimits map[string]*domain.RateLimit
 }
 
 func NewRateLimiter() *RateLimiterImpl {
 	return &RateLimiterImpl{
-		routeLimits: make(map[string]*RateLimit),
+		routeLimits: make(map[string]*domain.RateLimit),
 	}
 }
 
-func (r *RateLimiterImpl) UpdateLimit(route string, limit *RateLimit) {
+func (r *RateLimiterImpl) UpdateLimit(route string, limit *domain.RateLimit) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

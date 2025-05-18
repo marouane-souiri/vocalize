@@ -8,11 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/marouane-souiri/vocalize/internal/discord/cache"
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
-	"github.com/marouane-souiri/vocalize/internal/discord/requester"
-	"github.com/marouane-souiri/vocalize/internal/websocket"
-	"github.com/marouane-souiri/vocalize/internal/workerpool"
+	"github.com/marouane-souiri/vocalize/internal/domain"
+	"github.com/marouane-souiri/vocalize/internal/implementation/cache"
+	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
 const (
@@ -35,35 +33,9 @@ const (
 	clientHandlerConsumedOnce = 0
 )
 
-type HandlerFunc func(event json.RawMessage)
-
 type clientHandler struct {
-	run  func(event json.RawMessage)
+	run  domain.ClientHandler
 	kind clientHandlerKind
-}
-
-type Client interface {
-	Start() error
-	Stop() error
-
-	On(eventType string, handler HandlerFunc)
-	Once(eventType string, handler HandlerFunc)
-
-	SetGuild(guild *models.Guild)
-	DelGuild(ID string)
-	// WARNING:
-	// Do not modify the returned *Guild.
-	// This object is shared between goroutines.
-	// Mutating it directly can lead to data races and undefined behavior.
-	// Always copy it before making changes - or we will be fucked.
-	GetGuild(ID string) (*models.Guild, error)
-	// WARNING: Do not modify the values of the returned map (*Guild).
-	// The Guild objects are shared between goroutines.
-	// Mutating it directly can lead to data races and undefined behavior.
-	// Always copy the data before making changes - or we will be fucked.
-	GetGuilds() map[string]*models.Guild
-
-	SendMessage(channelID string, message *models.SendMessage) error
 }
 
 type Payload struct {
@@ -77,10 +49,10 @@ type clientImpl struct {
 	token   string
 	url     string
 	intents string
-	ws      websocket.WSManager
-	wp      workerpool.WorkerPool
+	ws      interfaces.WSManager
+	wp      interfaces.WorkerPool
 	cm      cache.DiscordCacheManager
-	ar      requester.APIRequester
+	ar      interfaces.APIRequester
 
 	authenticated bool
 	authMu        sync.Mutex
@@ -107,16 +79,16 @@ const (
 )
 
 type CLientOptions struct {
-	Ws websocket.WSManager
-	Wp workerpool.WorkerPool
+	Ws interfaces.WSManager
+	Wp interfaces.WorkerPool
 	Cm cache.DiscordCacheManager
-	Ar requester.APIRequester
+	Ar interfaces.APIRequester
 
 	Intents uint64
 	Token   string
 }
 
-func NewClient(options *CLientOptions) (Client, error) {
+func NewClient(options *CLientOptions) (interfaces.Client, error) {
 	if options.Token == "" {
 		return nil, fmt.Errorf("token cannot be empty")
 	}
@@ -134,7 +106,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 	}, nil
 }
 
-func (c *clientImpl) SetGuild(guild *models.Guild) {
+func (c *clientImpl) SetGuild(guild *domain.Guild) {
 	c.cm.SetGuild(guild)
 }
 
@@ -142,7 +114,7 @@ func (c *clientImpl) DelGuild(ID string) {
 	c.cm.DelGuild(ID)
 }
 
-func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
+func (c *clientImpl) GetGuild(ID string) (*domain.Guild, error) {
 	guild, exist := c.cm.GetGuild(ID)
 	if !exist {
 		// TODO: ask discord api for the guild object
@@ -151,11 +123,11 @@ func (c *clientImpl) GetGuild(ID string) (*models.Guild, error) {
 	return guild, nil
 }
 
-func (c *clientImpl) GetGuilds() map[string]*models.Guild {
+func (c *clientImpl) GetGuilds() map[string]*domain.Guild {
 	return c.cm.GetGuilds()
 }
 
-func (c *clientImpl) SendMessage(channelID string, message *models.SendMessage) error {
+func (c *clientImpl) SendMessage(channelID string, message *domain.SendMessage) error {
 	c.ar.SendMessage(channelID, message)
 	return nil
 }

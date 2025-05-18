@@ -3,38 +3,38 @@ package cache
 import (
 	"sync"
 
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
+	"github.com/marouane-souiri/vocalize/internal/domain"
 )
 
 type DiscordCacheManager interface {
-	SetGuild(guild *models.Guild)
+	SetGuild(guild *domain.Guild)
 	DelGuild(ID string)
 	// WARNING:
 	// Do not modify the returned *Guild.
 	// This object is shared between goroutines.
 	// Mutating it directly can lead to data races and undefined behavior.
 	// Always copy it before making changes - or we will be fucked.
-	GetGuild(ID string) (*models.Guild, bool)
+	GetGuild(ID string) (*domain.Guild, bool)
 	// WARNING: Do not modify the values of the returned map (*Guild).
 	// The Guild objects are shared between goroutines.
 	// Mutating it directly can lead to data races and undefined behavior.
 	// Always copy the data before making changes - or we will be fucked.
-	GetGuilds() map[string]*models.Guild
+	GetGuilds() map[string]*domain.Guild
 	GuildsCount() int
 }
 
 type DiscordCacheManagerImpl struct {
-	guildsCache   map[string]*models.Guild
+	guildsCache   map[string]*domain.Guild
 	guildsCacheMu sync.RWMutex
 }
 
 func NewDiscordCacheManager() DiscordCacheManager {
 	return &DiscordCacheManagerImpl{
-		guildsCache: make(map[string]*models.Guild, 20),
+		guildsCache: make(map[string]*domain.Guild, 20),
 	}
 }
 
-func (c *DiscordCacheManagerImpl) SetGuild(guild *models.Guild) {
+func (c *DiscordCacheManagerImpl) SetGuild(guild *domain.Guild) {
 	c.guildsCacheMu.Lock()
 	c.guildsCache[guild.ID] = guild
 	c.guildsCacheMu.Unlock()
@@ -46,18 +46,18 @@ func (c *DiscordCacheManagerImpl) DelGuild(ID string) {
 	c.guildsCacheMu.Unlock()
 }
 
-func (c *DiscordCacheManagerImpl) GetGuild(ID string) (*models.Guild, bool) {
+func (c *DiscordCacheManagerImpl) GetGuild(ID string) (*domain.Guild, bool) {
 	c.guildsCacheMu.RLock()
 	guild, ok := c.guildsCache[ID]
 	c.guildsCacheMu.RUnlock()
 	return guild, ok
 }
 
-func (c *DiscordCacheManagerImpl) GetGuilds() map[string]*models.Guild {
+func (c *DiscordCacheManagerImpl) GetGuilds() map[string]*domain.Guild {
 	c.guildsCacheMu.RLock()
 	defer c.guildsCacheMu.RUnlock()
 
-	guilds := make(map[string]*models.Guild, len(c.guildsCache))
+	guilds := make(map[string]*domain.Guild, len(c.guildsCache))
 	for id, guild := range c.guildsCache {
 		if !guild.Unavailable {
 			guilds[id] = guild

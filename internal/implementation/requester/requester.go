@@ -9,25 +9,21 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
-	"github.com/marouane-souiri/vocalize/internal/ratelimiter"
+	"github.com/marouane-souiri/vocalize/internal/domain"
+	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
 const (
 	APIBaseURL = "https://discord.com/api/v10"
 )
 
-type APIRequester interface {
-	SendMessage(channelID string, message *models.SendMessage) error
-}
-
 type APIRequesterImpl struct {
 	client      *http.Client
 	token       string
-	rateLimiter ratelimiter.RateLimiter
+	rateLimiter interfaces.RateLimiter
 }
 
-func NewAPIRequester(token string, rateLimiter ratelimiter.RateLimiter) APIRequester {
+func NewAPIRequester(token string, rateLimiter interfaces.RateLimiter) interfaces.APIRequester {
 	return &APIRequesterImpl{
 		client:      &http.Client{Timeout: 30 * time.Second},
 		token:       token,
@@ -88,7 +84,7 @@ func (api *APIRequesterImpl) BaseReq(method, endpoint string, body any, result a
 			return fmt.Errorf("[Requester] hit rate limit but failed to parse response: %w", err)
 		}
 
-		limit := &ratelimiter.RateLimit{
+		limit := &domain.RateLimit{
 			Remaining:  0,
 			ResetAfter: time.Duration(rateLimitResponse.RetryAfter * float64(time.Second)),
 			Global:     rateLimitResponse.Global,
@@ -125,7 +121,7 @@ func (api *APIRequesterImpl) processRateLimitHeaders(route string, headers http.
 
 		isGlobal := headers.Get("X-RateLimit-Global") == "true"
 
-		limit := &ratelimiter.RateLimit{
+		limit := &domain.RateLimit{
 			Remaining:  remaining,
 			ResetAfter: time.Duration(resetAfter * float64(time.Second)),
 			Global:     isGlobal,

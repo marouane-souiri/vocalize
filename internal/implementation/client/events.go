@@ -2,13 +2,14 @@ package client
 
 import (
 	"encoding/json"
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/marouane-souiri/vocalize/internal/domain"
 )
 
-func (c *clientImpl) On(eventType string, handler HandlerFunc) {
+func (c *clientImpl) On(eventType string, handler domain.ClientHandler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.eventHandlers[eventType] = append(c.eventHandlers[eventType], &clientHandler{
@@ -17,7 +18,7 @@ func (c *clientImpl) On(eventType string, handler HandlerFunc) {
 	})
 }
 
-func (c *clientImpl) Once(eventType string, handler HandlerFunc) {
+func (c *clientImpl) Once(eventType string, handler domain.ClientHandler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.eventHandlers[eventType] = append(c.eventHandlers[eventType], &clientHandler{
@@ -92,7 +93,7 @@ func (c *clientImpl) handleInvalidSession(data json.RawMessage) {
 }
 
 func (c *clientImpl) handleReady(data json.RawMessage) {
-	var ready models.ReadyEvent
+	var ready domain.ReadyEvent
 	if err := json.Unmarshal(data, &ready); err != nil {
 		log.Printf("[Discord] Error unmarshaling READY event: %v", err)
 		return
@@ -116,7 +117,7 @@ func (c *clientImpl) handleReady(data json.RawMessage) {
 	} else {
 		log.Printf("[Discord] Info: start Caching %d UnavailableGuild", len(ready.Guilds))
 		for _, guild := range ready.Guilds {
-			c.cm.SetGuild(&models.Guild{ID: guild.ID, Unavailable: true})
+			c.cm.SetGuild(&domain.Guild{ID: guild.ID, Unavailable: true})
 		}
 		log.Println("[Discord] Info: Caching UnavailableGuild ends")
 	}

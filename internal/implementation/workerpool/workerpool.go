@@ -5,22 +5,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/marouane-souiri/vocalize/internal/domain"
+	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
-type Task func()
-
-type WorkerPool interface {
-	Submit(task Task)
-	SubmitPriority(task Task)
-	Shutdown(ctx context.Context)
-	GetActiveWorkerCount() int
-	GetMinWorkersCount() int
-	GetQueueSize() int
-	GetQueueCapacity() int
-}
-
 type WorkerPoolImpl struct {
-	tasks         chan Task
+	tasks         chan domain.Task
 	wg            sync.WaitGroup
 	activeWorkers int32
 	minWorkers    int32
@@ -29,7 +20,7 @@ type WorkerPoolImpl struct {
 	shutdownOnce  sync.Once
 }
 
-func NewWorkerPool(initialWorkers int, minWorkers int) WorkerPool {
+func NewWorkerPool(initialWorkers int, minWorkers int) interfaces.WorkerPool {
 	if initialWorkers <= 0 {
 		initialWorkers = 10
 	}
@@ -37,7 +28,7 @@ func NewWorkerPool(initialWorkers int, minWorkers int) WorkerPool {
 		minWorkers = 5
 	}
 	wp := &WorkerPoolImpl{
-		tasks:         make(chan Task, initialWorkers),
+		tasks:         make(chan domain.Task, initialWorkers),
 		activeWorkers: 0,
 		minWorkers:    int32(minWorkers),
 		done:          make(chan struct{}),
@@ -48,7 +39,7 @@ func NewWorkerPool(initialWorkers int, minWorkers int) WorkerPool {
 	return wp
 }
 
-func (wp *WorkerPoolImpl) Submit(task Task) {
+func (wp *WorkerPoolImpl) Submit(task domain.Task) {
 	queueLoad := float64(len(wp.tasks)) / float64(cap(wp.tasks))
 	if queueLoad >= 0.7 {
 		workersToAdd := max(cap(wp.tasks)/2, 1)
@@ -59,7 +50,7 @@ func (wp *WorkerPoolImpl) Submit(task Task) {
 	wp.tasks <- task
 }
 
-func (wp *WorkerPoolImpl) SubmitPriority(task Task) {
+func (wp *WorkerPoolImpl) SubmitPriority(task domain.Task) {
 	wp.wg.Add(1)
 	atomic.AddInt32(&wp.activeWorkers, 1)
 	go func() {

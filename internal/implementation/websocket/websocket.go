@@ -7,20 +7,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
 var WsErrNotConnected = fmt.Errorf("websocket not connected")
-
-type WSManager interface {
-	SetUrl(url string)
-	Connect() error
-	Reconnect(url string) error
-	Close() error
-	Send(data []byte)
-	Receive() <-chan []byte
-	Errors() <-chan error
-	IsConnected() bool
-}
 
 type wsManagerImpl struct {
 	mu   sync.RWMutex
@@ -36,7 +26,7 @@ type wsManagerImpl struct {
 	isActive bool
 }
 
-func NewWSManager() WSManager {
+func NewWSManager() interfaces.WSManager {
 	wm := &wsManagerImpl{
 		sendChan:    make(chan []byte, 100),
 		receiveChan: make(chan []byte, 100),

@@ -7,12 +7,12 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/application/handlers"
 	"github.com/marouane-souiri/vocalize/internal/config"
-	"github.com/marouane-souiri/vocalize/internal/discord/cache"
-	"github.com/marouane-souiri/vocalize/internal/discord/client"
-	"github.com/marouane-souiri/vocalize/internal/discord/requester"
-	"github.com/marouane-souiri/vocalize/internal/ratelimiter"
-	"github.com/marouane-souiri/vocalize/internal/websocket"
-	"github.com/marouane-souiri/vocalize/internal/workerpool"
+	"github.com/marouane-souiri/vocalize/internal/implementation/cache"
+	"github.com/marouane-souiri/vocalize/internal/implementation/client"
+	"github.com/marouane-souiri/vocalize/internal/implementation/ratelimiter"
+	"github.com/marouane-souiri/vocalize/internal/implementation/requester"
+	"github.com/marouane-souiri/vocalize/internal/implementation/websocket"
+	"github.com/marouane-souiri/vocalize/internal/implementation/workerpool"
 )
 
 func main() {

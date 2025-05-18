@@ -1,4 +1,4 @@
-package models
+package domain
 
 type UnavailableGuild struct {
 	ID          string `json:"id"`
