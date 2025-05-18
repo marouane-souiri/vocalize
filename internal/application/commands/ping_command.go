@@ -1,10 +1,9 @@
 package commands
 
 import (
-	"log"
-
 	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/discord/client"
+	"github.com/marouane-souiri/vocalize/internal/discord/models"
 )
 
 type PingCommand struct {
@@ -19,6 +18,8 @@ func NewPingCommand() commandsmanager.BaseCommand {
 }
 
 func (cmd *PingCommand) Run(c client.Client, ctx commandsmanager.CommandContext) error {
-	log.Print("Pong !!")
+	c.SendMessage("1250930757254516836", &models.SendMessage{
+		Content: "Pong !!",
+	})
 	return nil
 }
