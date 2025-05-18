@@ -105,6 +105,10 @@ func (c *clientImpl) handleReconnect() {
 	c.reconnecting = true
 	c.reconnectMu.Unlock()
 
+	c.authMu.Lock()
+	c.authenticated = false
+	c.authMu.Unlock()
+
 	if c.heartbeatCancel != nil {
 		c.heartbeatCancel()
 		c.heartbeatCancel = nil
@@ -214,6 +218,14 @@ func (c *clientImpl) sendHeartbeat() {
 }
 
 func (c *clientImpl) sendIdentify() {
+	c.authMu.Lock()
+	if c.authenticated {
+		log.Println("[Discord] Already authenticated, skipping identify")
+		c.authMu.Unlock()
+		return
+	}
+	c.authMu.Unlock()
+
 	identify := Payload{
 		Op: opIdentify,
 		D: json.RawMessage(fmt.Sprintf(`{
@@ -223,8 +235,8 @@ func (c *clientImpl) sendIdentify() {
 				"browser": "discord-client",
 				"device": "discord-client"
 			},
-			"intents": 33281
-		}`, c.token)),
+			"intents": %s
+		}`, c.token, c.intents)),
 	}
 
 	data, err := json.Marshal(identify)
@@ -238,6 +250,10 @@ func (c *clientImpl) sendIdentify() {
 }
 
 func (c *clientImpl) sendResume() {
+	c.authMu.Lock()
+	c.authenticated = false
+	c.authMu.Unlock()
+
 	resume := Payload{
 		Op: opResume,
 		D: json.RawMessage(fmt.Sprintf(`{

@@ -2,11 +2,10 @@ package client
 
 import (
 	"encoding/json"
+	"github.com/marouane-souiri/vocalize/internal/discord/models"
 	"log"
 	"math/rand"
 	"time"
-
-	"github.com/marouane-souiri/vocalize/internal/discord/models"
 )
 
 func (c *clientImpl) On(eventType string, handler HandlerFunc) {
@@ -35,12 +34,9 @@ func (c *clientImpl) handleHello(data json.RawMessage) {
 		log.Printf("[Discord] Error unmarshaling Hello payload: %v", err)
 		return
 	}
-
 	c.heartbeatInterval = time.Duration(hello.HeartbeatInterval) * time.Millisecond
 	log.Printf("[Discord] Received Hello with heartbeat interval: %v", c.heartbeatInterval)
-
 	c.startHeartbeat()
-
 	if c.sessionID != "" && c.sequence > 0 {
 		c.sendResume()
 	} else {
@@ -50,23 +46,19 @@ func (c *clientImpl) handleHello(data json.RawMessage) {
 
 func (c *clientImpl) handleDispatch(eventType string, data json.RawMessage) {
 	log.Printf("[Discord] Processing event: %s", eventType)
-
 	if eventType == "READY" {
 		c.handleReady(data)
 	} else if eventType == "RESUMED" {
 		log.Println("[Discord] Session resumed successfully")
 	}
-
 	c.mu.RLock()
 	handlers, exists := c.eventHandlers[eventType]
 	c.mu.RUnlock()
-
 	if exists {
 		for i, handler := range handlers {
 			if handler.kind == clientHandlerConsumedOnce {
 				continue
 			}
-
 			if handler.kind == clientHandlerOnce {
 				c.mu.Lock()
 				if i < len(c.eventHandlers[eventType]) {
@@ -74,7 +66,6 @@ func (c *clientImpl) handleDispatch(eventType string, data json.RawMessage) {
 				}
 				c.mu.Unlock()
 			}
-
 			handler.run(data)
 		}
 	}
@@ -86,20 +77,16 @@ func (c *clientImpl) handleInvalidSession(data json.RawMessage) {
 		log.Printf("[Discord] Error unmarshaling invalid session data: %v", err)
 		canResume = false
 	}
-
 	if canResume {
 		log.Println("[Discord] Session is resumable, reconnecting")
 		c.handleReconnect()
 	} else {
 		log.Println("[Discord] Session not resumable, creating new session")
-
 		c.sessionID = ""
 		c.sequence = 0
-
 		waitTime := time.Duration(rand.Intn(4000)+1000) * time.Millisecond
 		log.Printf("[Discord] Waiting %v before identifying", waitTime)
 		time.Sleep(waitTime)
-
 		c.sendIdentify()
 	}
 }
@@ -111,17 +98,19 @@ func (c *clientImpl) handleReady(data json.RawMessage) {
 		return
 	}
 
+	c.authMu.Lock()
+	c.authenticated = true
+	c.authMu.Unlock()
+
 	c.sessionID = ready.SessionID
 	c.resumeGatewayURL = ready.ResumeGatewayURL
 	if c.resumeGatewayURL == "" {
 		log.Println("[Discord] No Resume Gateway URL provided, using default")
 		c.resumeGatewayURL = c.url
 	}
-
 	log.Printf("[Discord] Connected as %s#%s", ready.User.Username, ready.User.Discriminator)
 	log.Printf("[Discord] Session ID: %s", c.sessionID)
 	log.Printf("[Discord] Resume Gateway URL: %s", c.resumeGatewayURL)
-
 	if len(ready.Guilds) == 0 {
 		log.Println("[Discord] Info: No Guild to cache")
 	} else {

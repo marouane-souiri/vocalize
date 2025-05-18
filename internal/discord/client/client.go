@@ -44,12 +44,12 @@ type clientHandler struct {
 type Client interface {
 	Start() error
 	Stop() error
+
 	On(eventType string, handler HandlerFunc)
 	Once(eventType string, handler HandlerFunc)
 
 	SetGuild(guild *models.Guild)
 	DelGuild(ID string)
-
 	// WARNING:
 	// Do not modify the returned *Guild.
 	// This object is shared between goroutines.
@@ -78,20 +78,20 @@ type clientImpl struct {
 	wp      workerpool.WorkerPool
 	cm      cache.DiscordCacheManager
 
-	sessionID        string
-	resumeGatewayURL string
-	sequence         int
+	authenticated bool
+	authMu        sync.Mutex
 
+	sessionID         string
+	resumeGatewayURL  string
+	sequence          int
 	heartbeatInterval time.Duration
 	heartbeatCancel   context.CancelFunc
 	lastHeartbeatAck  time.Time
-
-	eventHandlers map[string][]*clientHandler
-	mu            sync.RWMutex
-
-	shutdown     chan struct{}
-	reconnecting bool
-	reconnectMu  sync.Mutex
+	eventHandlers     map[string][]*clientHandler
+	mu                sync.RWMutex
+	shutdown          chan struct{}
+	reconnecting      bool
+	reconnectMu       sync.Mutex
 }
 
 type Intents uint64
@@ -103,10 +103,9 @@ const (
 )
 
 type CLientOptions struct {
-	Ws websocket.WSManager
-	Wp workerpool.WorkerPool
-	Cm cache.DiscordCacheManager
-
+	Ws      websocket.WSManager
+	Wp      workerpool.WorkerPool
+	Cm      cache.DiscordCacheManager
 	Intents uint64
 	Token   string
 }
@@ -115,7 +114,6 @@ func NewClient(options *CLientOptions) (Client, error) {
 	if options.Token == "" {
 		return nil, fmt.Errorf("token cannot be empty")
 	}
-
 	return &clientImpl{
 		token:         options.Token,
 		url:           gatewayURL,
@@ -125,6 +123,7 @@ func NewClient(options *CLientOptions) (Client, error) {
 		cm:            options.Cm,
 		eventHandlers: make(map[string][]*clientHandler),
 		shutdown:      make(chan struct{}),
+		authenticated: false,
 	}, nil
 }
 
