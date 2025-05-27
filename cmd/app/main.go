@@ -3,16 +3,19 @@ package main
 import (
 	"log"
 
-	"github.com/marouane-souiri/vocalize/internal/application/commands"
-	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
-	"github.com/marouane-souiri/vocalize/internal/application/handlers"
 	"github.com/marouane-souiri/vocalize/internal/config"
-	"github.com/marouane-souiri/vocalize/internal/implementation/cache"
+
 	"github.com/marouane-souiri/vocalize/internal/implementation/client"
+	"github.com/marouane-souiri/vocalize/internal/implementation/discordcache"
 	"github.com/marouane-souiri/vocalize/internal/implementation/ratelimiter"
 	"github.com/marouane-souiri/vocalize/internal/implementation/requester"
 	"github.com/marouane-souiri/vocalize/internal/implementation/websocket"
 	"github.com/marouane-souiri/vocalize/internal/implementation/workerpool"
+
+	"github.com/marouane-souiri/vocalize/internal/application/commands"
+	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
+
+	"github.com/marouane-souiri/vocalize/internal/application/handlers"
 )
 
 func main() {
@@ -26,7 +29,7 @@ func main() {
 	workerpoolManager := workerpool.NewWorkerPool(10, 5)
 	defer workerpoolManager.Shutdown(nil)
 
-	discordCacheManager := cache.NewDiscordCacheManager()
+	discordCacheManager := discordcache.NewDiscordCacheManager()
 
 	rateLimiter := ratelimiter.NewRateLimiter()
 
