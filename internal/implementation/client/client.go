@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/marouane-souiri/vocalize/internal/domain"
-	"github.com/marouane-souiri/vocalize/internal/implementation/cache"
 	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
@@ -51,7 +50,7 @@ type clientImpl struct {
 	intents string
 	ws      interfaces.WSManager
 	wp      interfaces.WorkerPool
-	cm      cache.DiscordCacheManager
+	cm      interfaces.DiscordCacheManager
 	ar      interfaces.APIRequester
 
 	authenticated bool
@@ -81,7 +80,7 @@ const (
 type CLientOptions struct {
 	Ws interfaces.WSManager
 	Wp interfaces.WorkerPool
-	Cm cache.DiscordCacheManager
+	Cm interfaces.DiscordCacheManager
 	Ar interfaces.APIRequester
 
 	Intents uint64
