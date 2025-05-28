@@ -6,6 +6,7 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/config"
 
 	"github.com/marouane-souiri/vocalize/internal/implementation/client"
+	"github.com/marouane-souiri/vocalize/internal/implementation/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/implementation/discordcache"
 	"github.com/marouane-souiri/vocalize/internal/implementation/ratelimiter"
 	"github.com/marouane-souiri/vocalize/internal/implementation/requester"
@@ -13,8 +14,6 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/implementation/workerpool"
 
 	"github.com/marouane-souiri/vocalize/internal/application/commands"
-	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
-
 	"github.com/marouane-souiri/vocalize/internal/application/handlers"
 )
 
@@ -47,13 +46,14 @@ func main() {
 		log.Fatalf("Failed to create discord client: %v", err)
 	}
 
+	commandsContextMaker := commandsmanager.NewCommandsContextMaker()
 	commandsManager := commandsmanager.NewCommandsManager()
 
 	commandsManager.AddCommand(commands.NewPingCommand())
 
 	client.On("GUILD_CREATE", handlers.GuildCreateHandler(client))
 	client.On("GUILD_DELETE", handlers.GuildDeleteHandler(client))
-	client.On("MESSAGE_CREATE", handlers.MessageCreateHandler(client, commandsManager))
+	client.On("MESSAGE_CREATE", handlers.MessageCreateHandler(client, commandsManager, commandsContextMaker))
 
 	if err := client.Start(); err != nil {
 		log.Fatalf("Failed to start discord client: %v", err)
