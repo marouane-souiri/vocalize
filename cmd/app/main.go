@@ -53,6 +53,9 @@ func main() {
 
 	client.On("GUILD_CREATE", handlers.GuildCreateHandler(client))
 	client.On("GUILD_DELETE", handlers.GuildDeleteHandler(client))
+	client.On("CHANNEL_CREATE", handlers.ChannelCreateHandler(client))
+	client.On("CHANNEL_UPDATE", handlers.ChannelUpdateHandler(client))
+	client.On("CHANNEL_DELETE", handlers.ChannelDeleteHandler(client))
 	client.On("MESSAGE_CREATE", handlers.MessageCreateHandler(client, commandsManager, commandsContextMaker))
 
 	if err := client.Start(); err != nil {
