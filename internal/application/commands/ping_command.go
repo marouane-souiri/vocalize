@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"github.com/marouane-souiri/vocalize/internal/application/commands/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/domain"
+	"github.com/marouane-souiri/vocalize/internal/implementation/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
 
@@ -18,7 +18,7 @@ func NewPingCommand() interfaces.BaseCommand {
 }
 
 func (cmd *PingCommand) Run(c interfaces.Client, ctx interfaces.CommandContext) error {
-	c.SendMessage("1250930757254516836", &domain.SendMessage{
+	c.SendMessage(ctx.GetChannelID(), &domain.SendMessage{
 		Content: "Pong !!",
 	})
 	return nil
