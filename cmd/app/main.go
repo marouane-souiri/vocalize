@@ -52,6 +52,7 @@ func main() {
 	commandsManager.AddCommand(commands.NewPingCommand())
 
 	client.On("GUILD_CREATE", handlers.GuildCreateHandler(client))
+	client.On("GUILD_UPDATE", handlers.GuildUpdateHandler(client))
 	client.On("GUILD_DELETE", handlers.GuildDeleteHandler(client))
 	client.On("CHANNEL_CREATE", handlers.ChannelCreateHandler(client))
 	client.On("CHANNEL_UPDATE", handlers.ChannelUpdateHandler(client))
