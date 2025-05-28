@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 type ReadyEvent struct {
 	SessionID        string `json:"session_id"`
@@ -26,4 +28,16 @@ type MessageCreateEvent struct {
 	GuildID *string `json:"guild_id"`
 	Member  *Member `json:"member"`
 	Message
+}
+
+type ChannelCreateEvent struct {
+	Channel
+}
+
+type ChannelUpdateEvent struct {
+	Channel
+}
+
+type ChannelDeleteEvent struct {
+	Channel
 }
