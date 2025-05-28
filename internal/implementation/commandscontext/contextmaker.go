@@ -1,22 +1,9 @@
-package commandsmanager
+package commandscontext
 
 import (
 	"github.com/marouane-souiri/vocalize/internal/domain"
 	"github.com/marouane-souiri/vocalize/internal/interfaces"
 )
-
-type CommandContextImpl struct {
-	guildID   string
-	channelID string
-}
-
-func (cc *CommandContextImpl) GetGuildID() string {
-	return cc.guildID
-}
-
-func (cc *CommandContextImpl) GetChannelID() string {
-	return cc.channelID
-}
 
 type CommandsContextMakerImpl struct{}
 
