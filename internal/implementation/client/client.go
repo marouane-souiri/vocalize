@@ -126,6 +126,23 @@ func (c *clientImpl) GetGuilds() map[string]*domain.Guild {
 	return c.cm.GetGuilds()
 }
 
+func (c *clientImpl) SetChannel(channel *domain.Channel) {
+	c.cm.SetChannel(channel)
+}
+
+func (c *clientImpl) DelChannel(ID string) {
+	c.cm.DelChannel(ID)
+}
+
+func (c *clientImpl) GetChannel(ID string) (*domain.Channel, error) {
+	channel, exist := c.cm.GetChannel(ID)
+	if !exist {
+		// TODO: ask discord api for the Channel object
+		return nil, errors.New("Guild not found")
+	}
+	return channel, nil
+}
+
 func (c *clientImpl) SendMessage(channelID string, message *domain.SendMessage) error {
 	c.ar.SendMessage(channelID, message)
 	return nil
