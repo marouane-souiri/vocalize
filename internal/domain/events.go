@@ -20,6 +20,10 @@ type GuildCreateEvent struct {
 	JoinedAt time.Time `json:"joined_at"`
 }
 
+type GuildUpdateEvent struct {
+	Guild
+}
+
 type GuildDeleteEvent struct {
 	UnavailableGuild
 }
