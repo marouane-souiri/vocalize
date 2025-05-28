@@ -26,5 +26,14 @@ type Client interface {
 	// Always copy the data before making changes - or we will be fucked.
 	GetGuilds() map[string]*domain.Guild
 
+	SetChannel(channel *domain.Channel)
+	DelChannel(ID string)
+	// WARNING:
+	// Do not modify the returned *Channel.
+	// This object is shared between goroutines.
+	// Mutating it directly can lead to data races and undefined behavior.
+	// Always copy it before making changes - or we will be fucked.
+	GetChannel(ID string) (*domain.Channel, error)
+
 	SendMessage(channelID string, message *domain.SendMessage) error
 }
