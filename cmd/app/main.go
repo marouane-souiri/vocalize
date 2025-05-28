@@ -6,6 +6,7 @@ import (
 	"github.com/marouane-souiri/vocalize/internal/config"
 
 	"github.com/marouane-souiri/vocalize/internal/implementation/client"
+	"github.com/marouane-souiri/vocalize/internal/implementation/commandscontext"
 	"github.com/marouane-souiri/vocalize/internal/implementation/commandsmanager"
 	"github.com/marouane-souiri/vocalize/internal/implementation/discordcache"
 	"github.com/marouane-souiri/vocalize/internal/implementation/ratelimiter"
@@ -46,7 +47,7 @@ func main() {
 		log.Fatalf("Failed to create discord client: %v", err)
 	}
 
-	commandsContextMaker := commandsmanager.NewCommandsContextMaker()
+	commandsContextMaker := commandscontext.NewCommandsContextMaker()
 	commandsManager := commandsmanager.NewCommandsManager()
 
 	commandsManager.AddCommand(commands.NewPingCommand())
