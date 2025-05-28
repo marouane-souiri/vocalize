@@ -10,7 +10,7 @@ import (
 )
 
 // https://discord.com/developers/docs/events/gateway-events#message-create
-func MessageCreateHandler(c interfaces.Client, commandsManager interfaces.CommandsManager) domain.ClientHandler {
+func MessageCreateHandler(c interfaces.Client, commandsManager interfaces.CommandsManager, commandsCtxMaker interfaces.CommandsContextMaker) domain.ClientHandler {
 	return func(event json.RawMessage) {
 		var messageCreate domain.MessageCreateEvent
 
@@ -26,7 +26,8 @@ func MessageCreateHandler(c interfaces.Client, commandsManager interfaces.Comman
 			log.Print("command name is: ", cmdName)
 			cmd, ok := commandsManager.GetCommand(cmdName)
 			if ok {
-				cmd.Run(c, struct{}{})
+				ctx := commandsCtxMaker.FromMessageEvent(messageCreate)
+				cmd.Run(c, ctx)
 			} else {
 				log.Print("Command not found")
 			}
