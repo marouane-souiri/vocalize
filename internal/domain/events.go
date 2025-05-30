@@ -45,3 +45,25 @@ type ChannelUpdateEvent struct {
 type ChannelDeleteEvent struct {
 	Channel
 }
+
+type GuildMemberAddEvent struct {
+	Member
+}
+
+type GuildMemberRemoveEvent struct {
+	GuildID string `json:"guild_id"`
+	User
+}
+
+type GuildMemberUpdateEvent struct {
+	ID       string      `json:"id"`
+	GuildID  string      `json:"guild_id"`
+	Nickname string      `json:"nick"`
+	Avatar   string      `json:"avatar"`
+	Banner   string      `json:"banner"`
+	Roles    []string    `json:"roles"`
+	JoinedAt time.Time   `json:"joined_at"`
+	Flags    MemberFlags `json:"flags"`
+	Deaf     bool        `json:"deaf"`
+	Mute     bool        `json:"mute"`
+}
