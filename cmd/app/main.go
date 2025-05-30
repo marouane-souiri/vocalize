@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/marouane-souiri/vocalize/internal/config"
+	"github.com/marouane-souiri/vocalize/internal/domain"
 
 	"github.com/marouane-souiri/vocalize/internal/implementation/client"
 	"github.com/marouane-souiri/vocalize/internal/implementation/commandscontext"
@@ -37,7 +38,7 @@ func main() {
 
 	client, err := client.NewClient(&client.CLientOptions{
 		Token:   config.Conf.Discord.Token,
-		Intents: client.Intents_GUILDS | client.Intents_GUILD_MESSAGES | client.Intents_MESSAGE_CONTENT,
+		Intents: domain.Intents_GUILDS | domain.Intents_GUILD_MESSAGES | domain.Intents_MESSAGE_CONTENT,
 		Ws:      websocketManager,
 		Wp:      workerpoolManager,
 		Cm:      discordCacheManager,
@@ -55,9 +56,15 @@ func main() {
 	client.On("GUILD_CREATE", handlers.GuildCreateHandler(client))
 	client.On("GUILD_UPDATE", handlers.GuildUpdateHandler(client))
 	client.On("GUILD_DELETE", handlers.GuildDeleteHandler(client))
+
 	client.On("CHANNEL_CREATE", handlers.ChannelCreateHandler(client))
 	client.On("CHANNEL_UPDATE", handlers.ChannelUpdateHandler(client))
 	client.On("CHANNEL_DELETE", handlers.ChannelDeleteHandler(client))
+
+	client.On("GUILD_MEMBER_ADD", handlers.MemberAddHandler(client))
+	client.On("GUILD_MEMBER_REMOVE", handlers.MemberRemoveHandler(client))
+	client.On("GUILD_MEMBER_UPDATE", handlers.MemberUpdateHandler(client))
+
 	client.On("MESSAGE_CREATE", handlers.MessageCreateHandler(client, commandsManager, commandsContextMaker))
 
 	if err := client.Start(); err != nil {
