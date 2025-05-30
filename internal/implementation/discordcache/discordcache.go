@@ -13,12 +13,16 @@ type DiscordCacheManagerImpl struct {
 
 	channelsCache   map[string]*domain.Channel
 	channelsCacheMu sync.RWMutex
+
+	membersCache   map[string]*domain.Member
+	membersCacheMu sync.RWMutex
 }
 
 func NewDiscordCacheManager() interfaces.DiscordCacheManager {
 	return &DiscordCacheManagerImpl{
 		guildsCache:   make(map[string]*domain.Guild, 20),
 		channelsCache: make(map[string]*domain.Channel, 50),
+		membersCache:  make(map[string]*domain.Member, 80),
 	}
 }
 
@@ -79,4 +83,27 @@ func (c *DiscordCacheManagerImpl) GetChannel(ID string) (*domain.Channel, bool) 
 
 func (c *DiscordCacheManagerImpl) ChannelsCount() int {
 	return len(c.channelsCache)
+}
+
+func (c *DiscordCacheManagerImpl) SetMember(member *domain.Member) {
+	c.membersCacheMu.Lock()
+	c.membersCache[member.ID+member.GuildID] = member
+	c.membersCacheMu.Unlock()
+}
+
+func (c *DiscordCacheManagerImpl) DelMember(memberID, guildID string) {
+	c.membersCacheMu.Lock()
+	delete(c.membersCache, memberID+guildID)
+	c.membersCacheMu.Unlock()
+}
+
+func (c *DiscordCacheManagerImpl) GetMember(memberID, guildID string) (*domain.Member, bool) {
+	c.membersCacheMu.RLock()
+	member, ok := c.membersCache[memberID+guildID]
+	c.membersCacheMu.RUnlock()
+	return member, ok
+}
+
+func (c *DiscordCacheManagerImpl) MembersCount() int {
+	return len(c.membersCache)
 }
