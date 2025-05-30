@@ -69,14 +69,6 @@ type clientImpl struct {
 	reconnectMu       sync.Mutex
 }
 
-type Intents uint64
-
-const (
-	Intents_GUILDS          = 1 << 0
-	Intents_GUILD_MESSAGES  = 1 << 9
-	Intents_MESSAGE_CONTENT = 1 << 15
-)
-
 type CLientOptions struct {
 	Ws interfaces.WSManager
 	Wp interfaces.WorkerPool
@@ -138,9 +130,26 @@ func (c *clientImpl) GetChannel(ID string) (*domain.Channel, error) {
 	channel, exist := c.cm.GetChannel(ID)
 	if !exist {
 		// TODO: ask discord api for the Channel object
-		return nil, errors.New("Guild not found")
+		return nil, errors.New("Channel not found")
 	}
 	return channel, nil
+}
+
+func (c *clientImpl) SetMember(member *domain.Member) {
+	c.cm.SetMember(member)
+}
+
+func (c *clientImpl) DelMember(memberID, guildID string) {
+	c.cm.DelMember(memberID, guildID)
+}
+
+func (c *clientImpl) GetMember(memberID, guildID string) (*domain.Member, error) {
+	member, exist := c.cm.GetMember(memberID, guildID)
+	if !exist {
+		// TODO: ask discord api for the Member object
+		return nil, errors.New("Member not found")
+	}
+	return member, nil
 }
 
 func (c *clientImpl) SendMessage(channelID string, message *domain.SendMessage) error {
